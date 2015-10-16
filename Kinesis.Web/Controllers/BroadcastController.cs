@@ -32,7 +32,6 @@ namespace Kinesis.Web.Controllers
             //create config that points to AWS region
             var config = new AmazonKinesisConfig();
             config.RegionEndpoint = Amazon.RegionEndpoint.USEast1;
-            config.
 
             //create client that pulls creds from web.config and takes in Kinesis config
             var client = new AmazonKinesisClient(config);
