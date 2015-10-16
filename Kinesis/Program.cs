@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -32,13 +33,17 @@ namespace Kinesis
             var client = new AmazonKinesisClient(config);
 
             var sw = Stopwatch.StartNew();
+            Stopwatch sw2 = null;
 
-            var tasks = new List<Task>();
+            var tasks = new List<Task<PutRecordResponse>>();
 
-            int count = 5000;
+            int count = int.Parse(ConfigurationManager.AppSettings["Count"]);
             Console.WriteLine("Sending {0} records... One at a time...", count);
+            sw.Restart();
             for (int i = 0; i < count; i++)
             {
+                //System.Threading.Thread.Sleep(10);
+                //sw2 = Stopwatch.StartNew();
                 //create stream object to add to Kinesis request
                 using (MemoryStream ms = new MemoryStream(oByte))
                 {
@@ -54,13 +59,25 @@ namespace Kinesis
                     //PUT the record to Kinesis
                     var task = client.PutRecordAsync(requestRecord);
                     tasks.Add(task);
+                   
                 }
+                //sw2.Stop();
+                ///Console.WriteLine("Async latency is {0}", sw2.ElapsedMilliseconds);       
             }
-
+             
             Console.WriteLine("{0} records sent... Waiting for tasks to complete...", count);
             Task.WaitAll(tasks.ToArray(), -1);
-            double actionsPerSec = (double)count / (double)sw.Elapsed.Seconds;
-            Console.WriteLine("{0} requests in {1} seconds. {2:0.00} requests/sec.", count, sw.Elapsed.Seconds, actionsPerSec);
+            sw.Stop();
+            foreach (var t in tasks)
+            {
+                if (t.Result.HttpStatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    Console.WriteLine(t.Result.HttpStatusCode);
+                }
+            }
+            
+            double actionsPerSec = (double)count * 1000 / (double)sw.ElapsedMilliseconds;
+            Console.WriteLine("{0} requests in {1} ms. {2:0.00} requests/sec.", count, sw.ElapsedMilliseconds, actionsPerSec);
 
         }
     }
